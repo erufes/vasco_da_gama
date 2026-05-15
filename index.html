@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 
 <head>
+
 <meta charset="UTF-8">
 
 <meta name="viewport"
@@ -14,14 +15,12 @@ user-scalable=no">
 
 <style>
 
-/* reseta margens padrão */
 *{
   margin:0;
   padding:0;
   box-sizing:border-box;
 }
 
-/* estilo do fundo */
 body{
 
   background:linear-gradient(135deg,#0f172a,#1e293b);
@@ -34,13 +33,9 @@ body{
 
   font-family:Arial, Helvetica, sans-serif;
 
-  user-select:none;
-  -webkit-user-select:none;
-
   overflow:hidden;
 }
 
-/* caixa principal */
 .container{
 
   width:95%;
@@ -66,84 +61,103 @@ h1{
 
   color:white;
 
-  margin-bottom:35px;
-
-  font-size:2rem;
+  margin-bottom:30px;
 }
 
-/* linha dos botões */
-.row{
-  display:flex;
-  justify-content:center;
-  gap:16px;
-  margin:18px 0;
-}
+.status{
 
-/* estilo geral dos botões */
-button{
+  color:#cbd5e1;
 
-  width:110px;
-  height:110px;
-
-  border:none;
-  border-radius:24px;
+  margin-bottom:25px;
 
   font-size:1rem;
+}
+
+button{
+
+  width:100%;
+
+  height:90px;
+
+  border:none;
+
+  border-radius:22px;
+
+  font-size:1.2rem;
+
   font-weight:bold;
 
   color:white;
 
   cursor:pointer;
 
-  transition:0.15s;
-
-  touch-action:none;
-
-  user-select:none;
-  -webkit-user-select:none;
+  background:linear-gradient(145deg,#22c55e,#16a34a);
 
   box-shadow:
   0 8px 20px rgba(0,0,0,0.35);
 }
 
-/* animação ao apertar */
-button:active{
-  transform:scale(0.92);
-}
-
-/* botão frente */
-.forward{
-  background:linear-gradient(145deg,#22c55e,#16a34a);
-}
-
-/* botão ré */
-.reverse{
-  background:linear-gradient(145deg,#f97316,#ea580c);
-}
-
-/* botões esquerda e direita */
-.left,
-.right{
-  background:linear-gradient(145deg,#3b82f6,#2563eb);
-}
-
 </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Projeto Carro 1</h1>
+
+  <div class="status" id="status">
+
+    Clique para iniciar
+
+  </div>
+
+  <button onclick="iniciarSensores()">
+
+    INICIAR CONTROLE
+
+  </button>
+
+</div>
 
 <script>
 
-// variável do intervalo
+// ======================
+// TROQUE PELO IP DA SUA ESP32
+// ======================
+
+const ESP32_IP = "http://192.168.0.101";
+
+// ======================
+// VARIAVEIS
+// ======================
+
 let interval = null;
 
-// guarda qual comando está ativo
 let comandoAtual = null;
 
-// função que envia comandos pro ESP32
+// ======================
+// STATUS
+// ======================
+
+const statusDiv =
+document.getElementById("status");
+
+// ======================
+// ENVIAR
+// ======================
+
 function enviar(cmd){
 
-  fetch(cmd).catch(() => {});
+  fetch(ESP32_IP + cmd)
+  .catch(() => {});
 }
 
-// começa um movimento
+// ======================
+// INICIAR MOVIMENTO
+// ======================
+
 function iniciar(cmd){
 
   if(comandoAtual === cmd){
@@ -163,7 +177,10 @@ function iniciar(cmd){
   }, 100);
 }
 
-// para o robô
+// ======================
+// PARAR
+// ======================
+
 function parar(){
 
   if(interval){
@@ -176,101 +193,118 @@ function parar(){
   comandoAtual = null;
 
   enviar('/stop');
+
+  statusDiv.innerHTML =
+  "PARADO";
 }
 
-// eventos globais
-document.addEventListener('mouseup', parar);
-document.addEventListener('touchend', parar);
-window.addEventListener('blur', parar);
+// ======================
+// CONTROLAR MOVIMENTO
+// ======================
+
+function controlarMovimento(beta, gamma){
+
+  // frente
+
+  if(beta < -15){
+
+    statusDiv.innerHTML =
+    "FRENTE";
+
+    iniciar('/forward');
+  }
+
+  // re
+
+  else if(beta > 15){
+
+    statusDiv.innerHTML =
+    "RÉ";
+
+    iniciar('/reverse');
+  }
+
+  // direita
+
+  else if(gamma > 15){
+
+    statusDiv.innerHTML =
+    "DIREITA";
+
+    iniciar('/right');
+  }
+
+  // esquerda
+
+  else if(gamma < -15){
+
+    statusDiv.innerHTML =
+    "ESQUERDA";
+
+    iniciar('/left');
+  }
+
+  // parado
+
+  else{
+
+    parar();
+  }
+}
+
+// ======================
+// INICIAR SENSORES
+// ======================
+
+async function iniciarSensores(){
+
+  // iphone
+
+  if(typeof DeviceOrientationEvent
+  .requestPermission === 'function'){
+
+    const permissao =
+    await DeviceOrientationEvent
+    .requestPermission();
+
+    if(permissao !== 'granted'){
+
+      alert("Permissão negada");
+
+      return;
+    }
+  }
+
+  statusDiv.innerHTML =
+  "CONTROLE ATIVADO";
+
+  // lê sensores
+
+  window.addEventListener(
+    'deviceorientation',
+
+    (event) => {
+
+      controlarMovimento(
+
+        event.beta,
+        event.gamma
+      );
+    }
+  );
+}
+
+// ======================
+// SEGURANÇA
+// ======================
+
+window.addEventListener(
+  'blur',
+  parar
+);
 
 </script>
 
-</head>
-
-<body>
-
-<div class="container">
-
-  <h1>Projeto Carro 1</h1>
-
-  <!-- botão frente -->
-  <div class="row">
-
-    <button
-      class="forward"
-
-      onpointerdown="iniciar('/forward')"
-
-      onpointerup="parar()"
-
-      onpointerleave="parar()"
-
-      onpointercancel="parar()">
-
-      FRENTE
-
-    </button>
-
-  </div>
-
-  <!-- linha esquerda e direita -->
-  <div class="row">
-
-    <!-- esquerda -->
-    <button
-      class="left"
-
-      onpointerdown="iniciar('/left')"
-
-      onpointerup="parar()"
-
-      onpointerleave="parar()"
-
-      onpointercancel="parar()">
-
-      ESQ
-
-    </button>
-
-    <!-- direita -->
-    <button
-      class="right"
-
-      onpointerdown="iniciar('/right')"
-
-      onpointerup="parar()"
-
-      onpointerleave="parar()"
-
-      onpointercancel="parar()">
-
-      DIR
-
-    </button>
-
-  </div>
-
-  <!-- botão ré -->
-  <div class="row">
-
-    <button
-      class="reverse"
-
-      onpointerdown="iniciar('/reverse')"
-
-      onpointerup="parar()"
-
-      onpointerleave="parar()"
-
-      onpointercancel="parar()">
-
-      RÉ
-
-    </button>
-
-  </div>
-
-</div>
-
 </body>
+
 </html>
